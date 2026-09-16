@@ -1,124 +1,105 @@
 # worlds
 
-One markdown vault. Every coding agent gets the same brain.
+One markdown vault. Point every coding agent at it.
 
-Pi, Claude Code, Cursor, and Codex each reinvent skills and project memory in different folders. **worlds** is a tiny open format plus a CLI that syncs one vault into those harnesses.
+You know the drill: Claude Code has skills in one place, Pi in another, Cursor rules somewhere else, Codex wants `AGENTS.md`. You paste the same "here's how my notes work" speech into a new chat, the model nods, then invents a second note format by Thursday.
 
-Status: early / experimental.
+**worlds** is a small Go CLI plus a boring markdown layout. Sync the same vault into those harnesses. Optional MCP if you want tools instead of shell-grepping.
 
-## Why
+Early. Experimental. Useful to me. Maybe useful to you.
 
-Local and cloud coding agents are multiplying. Context is the bottleneck. Copy-pasting half-broken skill packs per tool is the current state of the art. Worlds fixes the pipe, not the model.
+## Who this is for
 
-## Quickstart
+You run more than one coding agent (or you will), and you're tired of re-explaining project memory.
+
+If you only ever use one tool and love pasting a paragraph, you don't need this yet. Just tell the agent. Seriously.
+
+## Install
 
 ```bash
+git clone https://github.com/KarolisValatka/worlds
+cd worlds
 go build -o worlds ./cmd/worlds
-./worlds init ./my-vault
-./worlds validate ./example-vault
-./worlds sync --vault ./example-vault --target pi
-./worlds sync --vault ./example-vault --target claude
-./worlds sync --vault ./example-vault --target cursor
-./worlds sync --vault ./example-vault --target codex
-./worlds doctor --vault ./example-vault
-./worlds import --from cursor --out ./imported-vault
 ```
 
-Outputs land in `./out/<target>/` by default. Pass `--install` to write into the usual home paths for that harness (see SPEC.md).
+Or:
+
+```bash
+go install github.com/KarolisValatka/worlds/cmd/worlds@latest
+```
+
+Needs a recent Go (module says 1.25; toolchain download usually handles it).
+
+## 30-second tour
+
+```bash
+./worlds validate ./example-vault
+./worlds sync --vault ./example-vault --target pi
+./worlds doctor --vault ./example-vault
+```
+
+`sync` writes under `./out/<target>/` by default. Add `--install` to drop files into the usual home paths (Pi skills, Claude skills, Cursor rules, Codex fragment). Details in [SPEC.md](SPEC.md).
+
+Demo vault lives in [example-vault/](example-vault/). It's fake. Your real notes stay yours.
+
+## The vault
+
+```
+BRAIN.md              # hot index (keep it short)
+learn/BRAIN.md        # one "world" = one subject
+learn/wiki/*.md       # durable pages + frontmatter
+learn/labs/           # runnable notes
+learn/raw/            # drops you never edit
+```
+
+Worlds are subjects (`work`, `studio`, `learn`), not random folders. Wiki pages need `title`, `created`, `updated`, `source`, `tags`. No passwords in the vault. Commit when *you* say so.
+
+Full rules: [SPEC.md](SPEC.md).
 
 ## Commands
 
-| Command | Purpose |
-|---------|---------|
-| `init [dir]` | Create a starter vault |
-| `validate [dir]` | Check layout + wiki frontmatter |
-| `sync --vault --target [--out] [--install]` | Emit / install harness skill or rule |
-| `mcp --vault <dir>` | MCP server over stdio |
-| `doctor [--vault] [--fix]` | Report harness paths; optionally install missing |
-| `import --from pi\|claude\|cursor [--out]` | Copy harness skills/rules into a new vault |
+```text
+worlds init [dir]
+worlds validate [dir]
+worlds sync   --vault <dir> --target pi|claude|cursor|codex [--out dir] [--install]
+worlds mcp    --vault <dir>
+worlds doctor [--vault dir] [--fix]
+worlds import --from pi|claude|cursor [--out dir]
+```
 
-## MCP server
+**doctor** — looks for Pi / Claude / Cursor / Codex wiring (and optionally Ollama). `--fix` runs `sync --install` for what's missing.
 
-`worlds mcp --vault <dir>` speaks [Model Context Protocol](https://modelcontextprotocol.io/) over stdio (official Go SDK). Tools:
+**import** — copy existing skills/rules into a new vault under world `imported`. Does not touch the source files.
 
-- `list_worlds`
-- `read_brain` — root `BRAIN.md`
-- `read_world` — world `BRAIN.md`, optional `list_wiki`
-- `read_wiki` — world + page
-- `write_wiki` — world + page + content/title/tags (keeps `created` / `updated`)
+**mcp** — stdio MCP server (`list_worlds`, `read_brain`, `read_world`, `read_wiki`, `write_wiki`).
 
-### Cursor / Claude mcp.json snippet
+Cursor / Claude style config:
 
 ```json
 {
   "mcpServers": {
     "worlds": {
-      "command": "worlds",
+      "command": "/absolute/path/to/worlds",
       "args": ["mcp", "--vault", "/absolute/path/to/your-vault"]
     }
   }
 }
 ```
 
-Use the absolute path to the `worlds` binary if it is not on `PATH`. For Cursor, put this in `.cursor/mcp.json` (project) or your user MCP config. For Claude Desktop / Claude Code, merge into the corresponding MCP settings file.
+## Why not just tell the agent?
 
-## Doctor
+You can. For one session, one harness, that works.
 
-```bash
-./worlds doctor --vault ./example-vault
-./worlds doctor --vault ./example-vault --fix
-```
+worlds is for the second session, the second tool, and the teammate who wasn't in the chat. The vault is the memory. The CLI stamps a pointer + rules into whatever harness you're using today so you stop retyping the speech.
 
-Best-effort checks:
+It does not make the model smarter. It keeps the notes from rotting in six incompatible folders.
 
-- `~/.pi/agent/` and `skills/worlds-brain`
-- `~/.claude/skills/` (and worlds-brain skill)
-- `.cursor/rules/` in the current directory
-- `AGENTS.worlds.md` / `AGENTS.md` in the current directory
-- optional Ollama at `http://127.0.0.1:11434`
+## Status / non-goals
 
-`--fix` runs `sync --install` for missing/relevant targets using `--vault`.
+Shipped: init, validate, sync, mcp, doctor, import.
 
-## Import
-
-```bash
-./worlds import --from pi --out ./imported-vault
-./worlds import --from claude
-./worlds import --from cursor --out ./from-cursor
-```
-
-Reads harness skill/rule locations (does not modify them), creates a vault at `--out` (default `./imported-vault`), and stores content under world `imported` as wiki pages with `source: import`.
-
-## Vault shape
-
-```
-BRAIN.md                 # hot index
-<world>/BRAIN.md         # world index
-<world>/wiki/*.md        # durable pages + frontmatter
-<world>/labs/            # runnable what|command notes
-<world>/raw/             # immutable drops YYYY-MM-DD-what.md
-```
-
-Full schema: [SPEC.md](SPEC.md). Demo vault: [example-vault/](example-vault/).
-
-## Install
-
-```bash
-go install github.com/KarolisValatka/worlds/cmd/worlds@latest
-```
-
-Requires a recent Go toolchain (module declares Go 1.25; older Go 1.22+ with toolchain download also works). Until published modules cache, build from this repo:
-
-```bash
-go build -o worlds ./cmd/worlds
-```
-
-## Roadmap
-
-- Watch mode / git hooks
-- More targets (OpenCode, Aider, custom templates)
-- Embedding / search helpers
+Not trying to be Obsidian, a RAG product, or another chat UI. Watch mode and more targets can wait until someone actually wants them.
 
 ## License
 
-MIT
+MIT. Copyright (c) 2026 Karolis Valatka.
