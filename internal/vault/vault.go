@@ -83,7 +83,7 @@ func Validate(dir string) error {
 	if worlds == 0 {
 		return fmt.Errorf("no world folders found under %s", dir)
 	}
-	fmt.Printf("ok: %s (%d worlds)\n", dir, worlds)
+	fmt.Fprintf(os.Stderr, "ok: %s (%d worlds)\n", dir, worlds)
 	return nil
 }
 

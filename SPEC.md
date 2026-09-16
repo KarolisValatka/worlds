@@ -71,6 +71,51 @@ Generated skill content must instruct the agent to:
 3. Check `updated` before treating wiki facts as current
 4. Write back with frontmatter; do not commit unless the human asks
 
+## MCP server
+
+Command: `worlds mcp --vault <dir>`
+
+Transport: stdio JSON-RPC (Model Context Protocol) via `github.com/modelcontextprotocol/go-sdk`.
+
+| Tool | Args | Behavior |
+|------|------|----------|
+| `list_worlds` | — | World directory names |
+| `read_brain` | — | Root `BRAIN.md` |
+| `read_world` | `world`, optional `list_wiki` | World `BRAIN.md`; optionally append wiki titles |
+| `read_wiki` | `world`, `page` | Full wiki page including frontmatter |
+| `write_wiki` | `world`, `page`, optional `content`/`title`/`tags` | Create/update page; preserve `created`, set `updated`, `source=mcp` |
+
+## Doctor
+
+Command: `worlds doctor [--vault dir] [--fix]`
+
+Reports OK/missing for:
+
+| Check | Path |
+|-------|------|
+| Pi agent | `~/.pi/agent/` |
+| Pi skill | `~/.pi/agent/skills/worlds-brain` |
+| Claude skills | `~/.claude/skills/` |
+| Claude skill | `~/.claude/skills/worlds-brain` |
+| Cursor rules | `<cwd>/.cursor/rules/` |
+| Cursor rule | `<cwd>/.cursor/rules/worlds-brain.mdc` |
+| Codex agents | `<cwd>/AGENTS.worlds.md` or `AGENTS.md` |
+| Ollama (optional) | `http://127.0.0.1:11434` |
+
+`--fix` runs `sync --install` for targets that are missing relevant install artifacts, using `--vault`.
+
+## Import
+
+Command: `worlds import --from <pi|claude|cursor> [--out dir]`
+
+| `--from` | Source roots (read-only) |
+|----------|--------------------------|
+| `pi` | `~/.pi/agent/skills/**/*.md` |
+| `claude` | `~/.claude/skills/**/*.md` |
+| `cursor` | `<cwd>/.cursor/rules/*.{md,mdc}` |
+
+Creates `--out` (default `./imported-vault`) with world `imported`. Each source file becomes a wiki page with `source: import`. Source files are never modified.
+
 ## Non-goals (MVP)
 
 - Real-time multiplayer editing
